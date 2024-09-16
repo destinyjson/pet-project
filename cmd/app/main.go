@@ -10,7 +10,7 @@ import (
 
 func main() {
 	database.InitDB()
-	database.DB.AutoMigrate(&service.RequestBody{})
+	//database.DB.AutoMigrate(&service.RequestBody{})
 
 	repo := service.NewMessageRepository(database.DB)
 	serviceMsg := service.NewService(repo)

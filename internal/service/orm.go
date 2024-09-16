@@ -1,8 +1,6 @@
 package service
 
-import "gorm.io/gorm"
-
 type RequestBody struct {
-	gorm.Model
+	Id      uint   `gorm:"primary_key"`
 	Message string `json:"message"`
 }
