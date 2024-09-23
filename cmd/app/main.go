@@ -1,26 +1,33 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
-	"net/http"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"log"
 	"pet-project/internal/database"
 	"pet-project/internal/handlers"
 	"pet-project/internal/service"
+	"pet-project/internal/web/messages"
 )
 
 func main() {
 	database.InitDB()
-	//database.DB.AutoMigrate(&service.RequestBody{})
+	database.DB.AutoMigrate(&service.RequestBody{})
 
 	repo := service.NewMessageRepository(database.DB)
 	serviceMsg := service.NewService(repo)
 
 	handler := handlers.NewHandler(serviceMsg)
 
-	router := mux.NewRouter()
-	router.HandleFunc("/api/get", handler.GetMessagesHandler).Methods("GET")
-	router.HandleFunc("/api/write", handler.PostMessageHandler).Methods("POST")
-	router.HandleFunc("/api/update/{id}", handler.UpdateMessageHandler).Methods("PATCH")
-	router.HandleFunc("/api/delete/{id}", handler.DeleteMessageHandler).Methods("DELETE")
-	http.ListenAndServe(":8080", router)
+	e := echo.New()
+
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	strictHandler := messages.NewStrictHandler(handler, nil) // тут будет ошибка
+	messages.RegisterHandlers(e, strictHandler)
+
+	if err := e.Start(":8080"); err != nil {
+		log.Fatalf("failed to start with err: %v", err)
+	}
 }

@@ -9,7 +9,7 @@ type MessageRepository interface {
 	CreateMessage(message RequestBody) (RequestBody, error)
 	GetAllMessages() ([]RequestBody, error)
 	UpdateMessageByID(id int, message RequestBody) (RequestBody, error)
-	DeleteMessageByID(id int, message RequestBody) (RequestBody, error)
+	DeleteMessageByID(id int) (RequestBody, error)
 }
 
 type MsgRepository struct {
@@ -45,10 +45,11 @@ func (r *MsgRepository) UpdateMessageByID(id int, message RequestBody) (RequestB
 	return message, nil
 }
 
-func (r *MsgRepository) DeleteMessageByID(id int, message RequestBody) (RequestBody, error) {
+func (r *MsgRepository) DeleteMessageByID(id int) (RequestBody, error) {
+	var message RequestBody
 	result := r.db.Clauses(clause.Returning{}).Where("id = ?", id).Delete(&message)
 	if result.Error != nil {
-		return RequestBody{}, result.Error
+		return message, result.Error
 	}
 	return message, nil
 }

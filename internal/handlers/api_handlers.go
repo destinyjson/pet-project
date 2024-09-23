@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
-	"github.com/gorilla/mux"
-	"net/http"
+	"context"
+	"fmt"
 	"pet-project/internal/service"
-	"strconv"
+	"pet-project/internal/web/messages"
 )
 
 type Handler struct {
@@ -18,72 +17,84 @@ func NewHandler(service *service.MessageService) *Handler {
 	}
 }
 
-func (h *Handler) GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	messages, err := h.Service.GetAllMessages()
+func (h *Handler) GetMessages(_ context.Context, _ messages.GetMessagesRequestObject) (messages.GetMessagesResponseObject, error) {
+	// Получение всех сообщений из сервиса
+	allMessages, err := h.Service.GetAllMessages()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+
+	// Создаем переменную респон типа 200джейсонРеспонс
+	// Которую мы потом передадим в качестве ответа
+	response := messages.GetMessages200JSONResponse{}
+
+	// Заполняем слайс response всеми сообщениями из БД
+	for _, msg := range allMessages {
+		message := messages.Message{
+			Id:      &msg.Id,
+			Message: &msg.Message,
+		}
+		response = append(response, message)
+	}
+
+	// САМОЕ ПРЕКРАСНОЕ. Возвращаем просто респонс и nil!
+	return response, nil
 }
 
-func (h *Handler) PostMessageHandler(w http.ResponseWriter, r *http.Request) {
-	var message service.RequestBody
-	err := json.NewDecoder(r.Body).Decode(&message)
+func (h *Handler) PostMessages(_ context.Context, request messages.PostMessagesRequestObject) (messages.PostMessagesResponseObject, error) {
+	// Распаковываем тело запроса напрямую, без декодера!
+	messageRequest := request.Body
+	// Обращаемся к сервису и создаем сообщение
+	messageToCreate := service.RequestBody{Message: *messageRequest.Message}
+	createdMessage, err := h.Service.CreateMessage(messageToCreate)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, err
 	}
-
-	createdMessage, err := h.Service.CreateMessage(message)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// создаем структуру респонс
+	response := messages.PostMessages201JSONResponse{
+		Id:      &createdMessage.Id,
+		Message: &createdMessage.Message,
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(createdMessage)
+	// Просто возвращаем респонс!
+	return response, nil
 }
 
-func (h *Handler) DeleteMessageHandler(w http.ResponseWriter, r *http.Request) {
-	var message service.RequestBody
-	idStr := mux.Vars(r)["id"]
-	idInt, err := strconv.Atoi(idStr)
+func (h *Handler) DeleteMessagesId(_ context.Context, request messages.DeleteMessagesIdRequestObject) (messages.DeleteMessagesIdResponseObject, error) {
+	// Получаем ID из запроса
+	id := request.Id
+
+	// Вызываем сервис для удаления сообщения по ID
+	deletedMessage, err := h.Service.DeleteMessageByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, err
 	}
 
-	deletedMsg, err := h.Service.DeleteMessageByID(idInt, message)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// Возвращаем успешный ответ. Если требуется, можно включить удалённое сообщение в ответ.
+	response := messages.DeleteMessagesId200JSONResponse{
+		Id:      &deletedMessage.Id,      // ID удалённого сообщения
+		Message: &deletedMessage.Message, // Сообщение удалённого объекта
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(deletedMsg)
+	return response, nil
 }
 
-func (h *Handler) UpdateMessageHandler(w http.ResponseWriter, r *http.Request) {
-	var message service.RequestBody
-	err := json.NewDecoder(r.Body).Decode(&message)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	idStr := mux.Vars(r)["id"]
-	idInt, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (h *Handler) PatchMessagesId(_ context.Context, request messages.PatchMessagesIdRequestObject) (messages.PatchMessagesIdResponseObject, error) {
+	id := request.Id
+
+	newMessage := request.Body
+	if newMessage == nil || newMessage.Message == nil {
+		return nil, fmt.Errorf("message cannot be empty")
 	}
 
-	updatedMessage, err := h.Service.UpdateMessageByID(idInt, message)
+	messageToUpdate := service.RequestBody{Message: *newMessage.Message}
+
+	deletedMessage, err := h.Service.UpdateMessageByID(id, messageToUpdate)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedMessage)
+	response := messages.PatchMessagesId200JSONResponse{
+		Id:      &deletedMessage.Id,
+		Message: &deletedMessage.Message,
+	}
+	return response, nil
 }

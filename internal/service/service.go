@@ -16,8 +16,8 @@ func (s *MessageService) GetAllMessages() ([]RequestBody, error) {
 	return s.repo.GetAllMessages()
 }
 
-func (s *MessageService) DeleteMessageByID(id int, message RequestBody) (RequestBody, error) {
-	return s.repo.DeleteMessageByID(id, message)
+func (s *MessageService) DeleteMessageByID(id int) (RequestBody, error) {
+	return s.repo.DeleteMessageByID(id)
 }
 
 func (s *MessageService) UpdateMessageByID(id int, message RequestBody) (RequestBody, error) {
