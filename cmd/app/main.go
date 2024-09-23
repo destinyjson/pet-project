@@ -12,7 +12,10 @@ import (
 
 func main() {
 	database.InitDB()
-	database.DB.AutoMigrate(&service.RequestBody{})
+	err := database.DB.AutoMigrate(&service.RequestBody{})
+	if err != nil {
+		return
+	}
 
 	repo := service.NewMessageRepository(database.DB)
 	serviceMsg := service.NewService(repo)
