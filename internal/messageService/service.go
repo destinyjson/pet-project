@@ -1,4 +1,4 @@
-package service
+package messageService
 
 type MessageService struct {
 	repo MessageRepository

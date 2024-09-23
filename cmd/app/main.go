@@ -6,29 +6,37 @@ import (
 	"log"
 	"pet-project/internal/database"
 	"pet-project/internal/handlers"
-	"pet-project/internal/service"
+	"pet-project/internal/messageService"
+	"pet-project/internal/userService"
 	"pet-project/internal/web/messages"
+	"pet-project/internal/web/users"
 )
 
 func main() {
 	database.InitDB()
-	err := database.DB.AutoMigrate(&service.RequestBody{})
+	err := database.DB.AutoMigrate(&messageService.RequestBody{}, &userService.User{})
 	if err != nil {
 		return
 	}
 
-	repo := service.NewMessageRepository(database.DB)
-	serviceMsg := service.NewService(repo)
+	repoMsg := messageService.NewMessageRepository(database.DB)
+	serviceMsg := messageService.NewService(repoMsg)
+	msgHandler := handlers.NewMessageHandler(serviceMsg)
 
-	handler := handlers.NewHandler(serviceMsg)
+	repoUsr := userService.NewUserRepository(database.DB)
+	serviceUsr := userService.NewService(repoUsr)
+	usrHandler := handlers.NewUserHandler(serviceUsr)
 
 	e := echo.New()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	strictHandler := messages.NewStrictHandler(handler, nil) // тут будет ошибка
-	messages.RegisterHandlers(e, strictHandler)
+	strictMsgHandler := messages.NewStrictHandler(msgHandler, nil) // тут будет ошибка
+	messages.RegisterHandlers(e, strictMsgHandler)
+
+	strictUsrHandler := users.NewStrictHandler(usrHandler, nil)
+	users.RegisterHandlers(e, strictUsrHandler)
 
 	if err := e.Start(":8080"); err != nil {
 		log.Fatalf("failed to start with err: %v", err)
